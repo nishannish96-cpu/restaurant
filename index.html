@@ -3,73 +3,40 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DineOS — Restaurant Management & POS</title>
+  <title>DineOS — Multi-Device Cloud POS & ZATCA</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <!-- Firebase Realtime Database Compat SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
   <style>
-    /* 80mm Thermal POS Printer Styling */
-    @page {
-      size: 80mm auto;
-      margin: 0mm;
-    }
+    @page { size: 80mm auto; margin: 0mm; }
     @media print {
       html, body {
-        width: 80mm;
-        margin: 0 !important;
-        padding: 0 !important;
-        background: #fff !important;
-        color: #000 !important;
-        -webkit-print-color-adjust: exact;
-        print-color-adjust: exact;
+        width: 80mm; margin: 0 !important; padding: 0 !important;
+        background: #fff !important; color: #000 !important;
+        -webkit-print-color-adjust: exact; print-color-adjust: exact;
       }
       body * { visibility: hidden; }
-
       body.printing-invoice #invoice-print-area,
       body.printing-invoice #invoice-print-area * { visibility: visible; }
       body.printing-invoice #invoice-print-area {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 78mm;
-        max-width: 78mm;
-        margin: 0;
-        padding: 3mm 3mm 8mm 3mm;
-        background: #fff !important;
-        color: #000 !important;
-        font-family: 'Courier New', Courier, monospace !important;
-        font-size: 11px !important;
-        line-height: 1.3 !important;
+        position: absolute; left: 0; top: 0; width: 78mm; max-width: 78mm;
+        margin: 0; padding: 3mm 3mm 8mm 3mm; background: #fff !important;
+        color: #000 !important; font-family: 'Courier New', Courier, monospace !important;
+        font-size: 11px !important; line-height: 1.3 !important;
       }
-
       body.printing-kot #kot-print-area,
       body.printing-kot #kot-print-area * { visibility: visible; }
       body.printing-kot #kot-print-area {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 78mm;
-        max-width: 78mm;
-        margin: 0;
-        padding: 3mm 3mm 8mm 3mm;
-        background: #fff !important;
-        color: #000 !important;
-        font-family: 'Courier New', Courier, monospace !important;
-        font-size: 12px !important;
-        line-height: 1.3 !important;
+        position: absolute; left: 0; top: 0; width: 78mm; max-width: 78mm;
+        margin: 0; padding: 3mm 3mm 8mm 3mm; background: #fff !important;
+        color: #000 !important; font-family: 'Courier New', Courier, monospace !important;
+        font-size: 12px !important; line-height: 1.3 !important;
       }
-
-      .thermal-black, .thermal-black * {
-        color: #000 !important;
-        border-color: #000 !important;
-      }
-      .thermal-invert {
-        background: #000 !important;
-        color: #fff !important;
-      }
-      #zatca-qr-container img, #zatca-qr-container canvas {
-        image-rendering: pixelated;
-        margin: 0 auto;
-      }
+      .thermal-black, .thermal-black * { color: #000 !important; border-color: #000 !important; }
+      .thermal-invert { background: #000 !important; color: #fff !important; }
+      #zatca-qr-container img, #zatca-qr-container canvas { image-rendering: pixelated; margin: 0 auto; }
       .no-print { display: none !important; }
     }
   </style>
@@ -82,11 +49,17 @@
       <div class="bg-emerald-700 text-white px-6 py-5 flex items-center justify-between">
         <div>
           <h1 class="text-xl font-bold tracking-tight">DineOS</h1>
-          <p class="text-emerald-100 text-xs mt-0.5" data-i18n="authSubtitle">Restaurant Management, POS & ZATCA E-Invoicing</p>
+          <p class="text-emerald-100 text-xs mt-0.5" data-i18n="authSubtitle">Multi-Device Restaurant POS, KDS & ZATCA E-Invoicing</p>
         </div>
-        <button onclick="toggleLang()" class="px-3 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-900 text-xs font-semibold transition">
-          <span id="auth-lang-btn">العربية</span>
-        </button>
+        <div class="flex items-center gap-2">
+          <button onclick="openSyncModal()" class="px-3 py-1.5 rounded-lg bg-emerald-900/70 hover:bg-emerald-900 text-xs font-semibold flex items-center gap-1.5">
+            <span id="auth-sync-dot" class="w-2 h-2 rounded-full bg-amber-400"></span>
+            <span>Cloud Sync</span>
+          </button>
+          <button onclick="toggleLang()" class="px-3 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-900 text-xs font-semibold transition">
+            <span id="auth-lang-btn">العربية</span>
+          </button>
+        </div>
       </div>
 
       <div class="flex border-b border-slate-200 bg-slate-50">
@@ -166,7 +139,7 @@
         </div>
 
         <div class="text-[11px] text-emerald-700 bg-emerald-50 px-3 py-2 rounded-lg">
-          Default staff accounts auto-created on signup: <strong>kitchen</strong> (Pass: <code>1234</code>) &amp; <strong>waiter</strong> (Pass: <code>1234</code>).
+          Default staff accounts auto-created: <strong>kitchen</strong> (Pass: <code>1234</code>) &amp; <strong>waiter</strong> (Pass: <code>1234</code>).
         </div>
 
         <div id="su-error" class="hidden text-xs text-red-600 font-medium bg-red-50 p-2.5 rounded-lg border border-red-200"></div>
@@ -187,7 +160,7 @@
           <input id="li-pass" required type="password" placeholder="••••••••" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500" />
         </div>
         <div class="text-[11px] text-slate-500 bg-slate-50 p-3 rounded-lg border border-slate-200">
-          <strong>Role Access:</strong> Admin (Full Access) • Kitchen User (<code>kitchen</code> — KDS Only) • Order Taker (<code>waiter</code> — Table Menu &amp; POS).
+          <strong>Multi-Device Tip:</strong> Connect your Firebase URL via <strong>Cloud Sync</strong> above so staff tablets and KDS screens can log into the same restaurant from any device.
         </div>
         <div id="li-error" class="hidden text-xs text-red-600 font-medium bg-red-50 p-2.5 rounded-lg border border-red-200"></div>
         <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-sm transition" data-i18n="loginBtn">
@@ -221,6 +194,10 @@
         </nav>
 
         <div class="flex items-center gap-2">
+          <button onclick="openSyncModal()" id="btn-cloud-sync" class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+            <span id="sync-dot" class="w-2 h-2 rounded-full bg-amber-400"></span>
+            <span id="sync-label">Local Mode</span>
+          </button>
           <button id="btn-users-modal" onclick="openUsersModal()" class="px-3 py-1.5 rounded-lg border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-xs font-semibold text-emerald-800" data-i18n="usersBtn">Users</button>
           <button id="btn-profile-modal" onclick="openProfileModal()" class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700" data-i18n="profile">Profile</button>
           <button onclick="toggleLang()" class="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700" id="app-lang-btn">العربية</button>
@@ -398,7 +375,6 @@
                 <button onclick="cancelPosOrder()" class="px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 text-[11px] font-semibold" data-i18n="cancelOrderBtn">Cancel Order</button>
               </div>
 
-              <!-- Takeaway Customer Name Input -->
               <div id="pos-takeaway-customer-wrap" class="hidden mb-3">
                 <label class="block text-[11px] font-semibold text-emerald-800 mb-1" data-i18n="takeawayCustLabel">Takeaway Customer Name *</label>
                 <input id="pos-takeaway-name" type="text" placeholder="Enter customer name..." class="w-full px-3 py-2 text-xs border border-emerald-300 rounded-lg bg-emerald-50/40 focus:outline-none focus:ring-2 focus:ring-emerald-500" />
@@ -473,7 +449,15 @@
       </section>
 
       <!-- 4. KITCHEN DISPLAY SYSTEM (KDS) -->
-      <section id="mod-kds" class="hidden">
+      <section id="mod-kds" class="hidden space-y-4">
+        <div class="bg-white rounded-2xl border border-slate-200 px-4 py-3 flex items-center justify-between">
+          <div class="text-xs font-semibold text-slate-600">
+            Live Kitchen Queue — Auto-plays bell chime when new orders arrive from any device
+          </div>
+          <button onclick="playKitchenBell()" class="px-3 py-1 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-800 text-xs font-semibold">
+            🔔 Test Bell
+          </button>
+        </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
           <div class="bg-white rounded-2xl border border-slate-200 p-4">
             <h2 class="text-sm font-bold text-amber-700 mb-3 flex items-center justify-between">
@@ -499,6 +483,35 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <!-- ==================== CLOUD SYNC MODAL (FIREBASE REALTIME DB) ==================== -->
+  <div id="sync-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full overflow-hidden shadow-xl">
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+        <h3 class="text-base font-bold text-slate-800">Multi-Device Real-Time Cloud Sync</h3>
+        <button onclick="closeSyncModal()" class="text-slate-400 hover:text-slate-700 font-bold">✕</button>
+      </div>
+      <form onsubmit="saveCloudConfig(event)" class="p-6 space-y-4 text-xs">
+        <div id="sync-status-banner" class="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 font-medium">
+          Currently running in <strong>Local Mode</strong> (single browser only).
+        </div>
+        <div>
+          <label class="block font-bold text-slate-700 mb-1">Firebase Realtime Database URL</label>
+          <input id="fb-db-url" type="url" placeholder="https://your-project-default-rtdb.firebaseio.com" class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg font-mono focus:outline-none focus:ring-2 focus:ring-emerald-500" />
+          <p class="text-[11px] text-slate-500 mt-1">
+            Paste the same Database URL on your Cashier PC, Waiter Tablets, and Kitchen Screen to sync menus, bills, and KDS tickets in under 1 second.
+          </p>
+        </div>
+        <div class="flex justify-between gap-2 pt-2">
+          <button type="button" onclick="disconnectCloud()" class="px-3 py-2 font-semibold text-red-600 hover:bg-red-50 rounded-lg">Disconnect</button>
+          <div class="flex gap-2">
+            <button type="button" onclick="closeSyncModal()" class="px-4 py-2 font-semibold bg-slate-100 rounded-lg">Close</button>
+            <button type="submit" class="px-4 py-2 font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg">Connect & Sync</button>
+          </div>
+        </div>
+      </form>
+    </div>
   </div>
 
   <!-- ==================== 80mm THERMAL KOT PRINT MODAL ==================== -->
@@ -699,6 +712,8 @@
   <script>
     const STORAGE_KEY = 'dineos_restaurants_v2';
     const SESSION_KEY = 'dineos_session_v3';
+    const CLOUD_URL_KEY = 'dineos_firebase_url_v1';
+
     let lang = 'en';
     let activeModule = 'reports';
     let reportFilter = 'today';
@@ -706,9 +721,13 @@
     let currentUser = null;
     let qrCart = [];
     let activePosTable = 'Table 01';
-    let posBills = {};
     let paymentMethod = 'cash';
     let currentPayableTotal = 0;
+
+    // Firebase Realtime Sync State
+    let fbDb = null;
+    let cloudConnected = false;
+    let lastKnownOrderCount = 0;
 
     const ROLE_PERMISSIONS = {
       admin: ['reports', 'menu', 'qr', 'pos', 'kds'],
@@ -718,7 +737,7 @@
 
     const i18n = {
       en: {
-        authSubtitle: 'Restaurant Management, POS & ZATCA E-Invoicing',
+        authSubtitle: 'Multi-Device Restaurant POS, KDS & ZATCA E-Invoicing',
         signupTab: 'Restaurant Signup', loginTab: 'Restaurant / Staff Login',
         restNameEn: 'Restaurant Name (English) *', restNameAr: 'Restaurant Name (Arabic)',
         vatNo: 'VAT Number (15 Digits) *', crNo: 'CR Number (10 Digits) *',
@@ -750,7 +769,7 @@
         historyNotice: 'Any changes you save will automatically archive the previous details under this account.'
       },
       ar: {
-        authSubtitle: 'إدارة المطاعم ونقاط البيع والفوترة الإلكترونية (زاتكا)',
+        authSubtitle: 'نظام نقاط البيع والمطبخ السحابي المتزامن والفوترة الإلكترونية (زاتكا)',
         signupTab: 'تسجيل مطعم جديد', loginTab: 'تسجيل دخول المطعم / الموظفين',
         restNameEn: 'اسم المطعم (إنجليزي) *', restNameAr: 'اسم المطعم (عربي)',
         vatNo: 'الرقم الضريبي (15 رقم) *', crNo: 'السجل التجاري (10 أرقام) *',
@@ -783,15 +802,156 @@
       }
     };
 
+    // ==================== CLOUD SYNC ENGINE (FIREBASE REALTIME DB) ====================
+    function initCloudSync(url) {
+      if (!url) {
+        updateSyncUI(false);
+        return;
+      }
+      try {
+        if (!firebase.apps.length) {
+          firebase.initializeApp({ databaseURL: url });
+        } else if (firebase.app().options.databaseURL !== url) {
+          firebase.app().delete().then(() => {
+            firebase.initializeApp({ databaseURL: url });
+            bindCloudListener();
+          });
+          return;
+        }
+        bindCloudListener();
+      } catch (err) {
+        console.error('Firebase init error:', err);
+        updateSyncUI(false);
+      }
+    }
+
+    function bindCloudListener() {
+      fbDb = firebase.database();
+      fbDb.ref('.info/connected').on('value', snap => {
+        cloudConnected = !!snap.val();
+        updateSyncUI(cloudConnected);
+      });
+
+      // Listen for real-time updates from any device
+      fbDb.ref('dineos_restaurants').on('value', snapshot => {
+        const cloudObj = snapshot.val();
+        if (!cloudObj) {
+          // Push local data to cloud if cloud is empty
+          const localList = getRestaurants();
+          if (localList.length) pushRestaurantsToCloud(localList);
+          return;
+        }
+        const cloudList = Object.values(cloudObj);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudList));
+
+        if (currentRestId) {
+          const curr = cloudList.find(r => r.id === currentRestId);
+          if (curr) {
+            const newOrderCount = (curr.orders || []).length;
+            if (newOrderCount > lastKnownOrderCount) {
+              playKitchenBell();
+            }
+            lastKnownOrderCount = newOrderCount;
+            renderHeader();
+            renderAll();
+          }
+        }
+      });
+    }
+
+    function pushRestaurantsToCloud(list) {
+      if (!fbDb) return;
+      const mapped = {};
+      list.forEach(r => { mapped[r.id] = r; });
+      fbDb.ref('dineos_restaurants').set(mapped).catch(err => console.error('Cloud save error:', err));
+    }
+
+    function updateSyncUI(connected) {
+      const dot = document.getElementById('sync-dot');
+      const authDot = document.getElementById('auth-sync-dot');
+      const label = document.getElementById('sync-label');
+      const banner = document.getElementById('sync-status-banner');
+      if (connected) {
+        if (dot) dot.className = 'w-2 h-2 rounded-full bg-emerald-500 animate-pulse';
+        if (authDot) authDot.className = 'w-2 h-2 rounded-full bg-emerald-400 animate-pulse';
+        if (label) label.textContent = 'Live Cloud Sync';
+        if (banner) {
+          banner.className = 'p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 font-medium';
+          banner.innerHTML = 'Connected to <strong>Firebase Cloud Sync</strong>. All devices update in real time.';
+        }
+      } else {
+        if (dot) dot.className = 'w-2 h-2 rounded-full bg-amber-400';
+        if (authDot) authDot.className = 'w-2 h-2 rounded-full bg-amber-400';
+        if (label) label.textContent = 'Local Mode';
+        if (banner) {
+          banner.className = 'p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 font-medium';
+          banner.innerHTML = 'Running in <strong>Local Mode</strong>. Enter your Firebase Database URL below to enable multi-device sync.';
+        }
+      }
+    }
+
+    function openSyncModal() {
+      document.getElementById('fb-db-url').value = localStorage.getItem(CLOUD_URL_KEY) || '';
+      updateSyncUI(cloudConnected);
+      document.getElementById('sync-modal').classList.remove('hidden');
+    }
+    function closeSyncModal() { document.getElementById('sync-modal').classList.add('hidden'); }
+    function saveCloudConfig(e) {
+      e.preventDefault();
+      const url = document.getElementById('fb-db-url').value.trim().replace(/\/$/, '');
+      if (!url) return;
+      localStorage.setItem(CLOUD_URL_KEY, url);
+      initCloudSync(url);
+      closeSyncModal();
+    }
+    function disconnectCloud() {
+      localStorage.removeItem(CLOUD_URL_KEY);
+      if (fbDb) fbDb.ref('dineos_restaurants').off();
+      fbDb = null;
+      cloudConnected = false;
+      updateSyncUI(false);
+      closeSyncModal();
+    }
+
+    // Audible Kitchen Notification Chime
+    function playKitchenBell() {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const now = ctx.currentTime;
+        [880, 1174.66].forEach((freq, idx) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.14);
+          gain.gain.setValueAtTime(0.15, now + idx * 0.14);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.14 + 0.45);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(now + idx * 0.14);
+          osc.stop(now + idx * 0.14 + 0.5);
+        });
+      } catch {}
+    }
+
+    // ==================== STORAGE HELPERS (SYNCED POS BILLS + CLOUD) ====================
     function getRestaurants() { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); }
-    function saveRestaurants(list) { localStorage.setItem(STORAGE_KEY, JSON.stringify(list)); }
+    function saveRestaurants(list) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
+      pushRestaurantsToCloud(list);
+    }
     function getCurrentRest() { return getRestaurants().find(r => r.id === currentRestId); }
     function updateCurrentRest(updater) {
       const list = getRestaurants();
       const idx = list.findIndex(r => r.id === currentRestId);
       if (idx === -1) return;
+      if (!list[idx].posBills || Array.isArray(list[idx].posBills)) list[idx].posBills = {};
       updater(list[idx]);
+      lastKnownOrderCount = (list[idx].orders || []).length;
       saveRestaurants(list);
+    }
+    function getTableBill(rest, table) {
+      if (!rest || !rest.posBills) return [];
+      return Array.isArray(rest.posBills[table]) ? rest.posBills[table] : [];
     }
     function ensureDefaultUsers(rest) {
       if (!Array.isArray(rest.users) || rest.users.length === 0) {
@@ -803,6 +963,7 @@
       }
       if (!Array.isArray(rest.invoices)) rest.invoices = [];
       if (!Array.isArray(rest.cancellations)) rest.cancellations = [];
+      if (!rest.posBills) rest.posBills = {};
       return rest.users;
     }
     function getTableKitchenOrder(table) {
@@ -814,10 +975,10 @@
     function hasUnsentPosChanges(table) {
       const existing = getTableKitchenOrder(table);
       if (!existing) return false;
-      const bill = posBills[table] || [];
-      if (bill.length !== existing.items.length) return true;
+      const bill = getTableBill(getCurrentRest(), table);
+      if (bill.length !== (existing.items || []).length) return true;
       return bill.some(bItem => {
-        const kItem = existing.items.find(x => x.id === bItem.id);
+        const kItem = (existing.items || []).find(x => x.id === bItem.id);
         return !kItem || kItem.qty !== bItem.qty;
       });
     }
@@ -847,7 +1008,7 @@
       document.getElementById('kot-table').textContent = order.table;
       document.getElementById('kot-time').textContent = order.updatedAt || order.time;
       document.getElementById('kot-staff').textContent = currentUser ? currentUser.name : 'Staff';
-      document.getElementById('kot-items-body').innerHTML = order.items.map(i => `
+      document.getElementById('kot-items-body').innerHTML = (order.items || []).map(i => `
         <tr>
           <td class="py-1.5 font-black align-top">${i.qty}x</td>
           <td class="py-1.5 font-bold leading-tight">${i.nameEn}${i.nameAr && i.nameAr !== i.nameEn ? `<div class="text-[11px] font-normal">${i.nameAr}</div>` : ''}</td>
@@ -924,7 +1085,7 @@
           { id: 'U-KDS', name: 'Kitchen Display', username: 'kitchen', password: '1234', role: 'kitchen' },
           { id: 'U-WAIT', name: 'Order Taker', username: 'waiter', password: '1234', role: 'order_taker' }
         ],
-        profileHistory: [], menu: [], orders: [], invoices: [], cancellations: [], invoiceSeq: 1
+        profileHistory: [], menu: [], orders: [], posBills: {}, invoices: [], cancellations: [], invoiceSeq: 1
       };
       list.push(newRest);
       saveRestaurants(list);
@@ -949,7 +1110,7 @@
         }
       }
       if (!matchedRest || !matchedUser) {
-        errEl.textContent = 'Invalid username/email or password.';
+        errEl.textContent = 'Invalid username/email or password. (If logging in from a second device, connect Cloud Sync first.)';
         errEl.classList.remove('hidden');
         return;
       }
@@ -965,6 +1126,8 @@
     }
     function enterApp(restId, user) {
       currentRestId = restId; currentUser = user;
+      const r = getCurrentRest();
+      lastKnownOrderCount = r ? (r.orders || []).length : 0;
       document.getElementById('auth-screen').classList.add('hidden');
       document.getElementById('app-screen').classList.remove('hidden');
       initTableDropdown();
@@ -1180,7 +1343,7 @@
       `).join('');
     }
 
-    // ==================== 1. MENU MANAGER (TAX-INCLUSIVE) ====================
+    // ==================== 1. MENU MANAGER ====================
     function updateDishTaxPreview() {
       const incl = parseFloat(document.getElementById('dish-price').value) || 0;
       const base = incl / 1.15;
@@ -1194,24 +1357,28 @@
       const nameAr = document.getElementById('dish-ar').value.trim() || nameEn;
       const category = document.getElementById('dish-cat').value;
       const price = parseFloat(document.getElementById('dish-price').value);
-      updateCurrentRest(r => { r.menu.push({ id: 'D' + Date.now(), nameEn, nameAr, category, price, taxInclusive: true, available: true }); });
+      updateCurrentRest(r => {
+        if (!Array.isArray(r.menu)) r.menu = [];
+        r.menu.push({ id: 'D' + Date.now(), nameEn, nameAr, category, price, taxInclusive: true, available: true });
+      });
       e.target.reset();
       updateDishTaxPreview();
       renderAll();
     }
     function toggleDishAvail(id) {
-      updateCurrentRest(r => { const d = r.menu.find(x => x.id === id); if (d) d.available = !d.available; });
+      updateCurrentRest(r => { const d = (r.menu || []).find(x => x.id === id); if (d) d.available = !d.available; });
       renderAll();
     }
     function deleteDish(id) {
-      updateCurrentRest(r => { r.menu = r.menu.filter(x => x.id !== id); });
+      updateCurrentRest(r => { r.menu = (r.menu || []).filter(x => x.id !== id); });
       renderAll();
     }
     function renderMenuManager() {
       const r = getCurrentRest();
       const el = document.getElementById('menu-manager-list');
-      if (!r.menu.length) { el.innerHTML = `<div class="text-xs text-slate-400 text-center py-8">No dishes added yet.</div>`; return; }
-      el.innerHTML = r.menu.map(d => `
+      const menu = (r && r.menu) || [];
+      if (!menu.length) { el.innerHTML = `<div class="text-xs text-slate-400 text-center py-8">No dishes added yet.</div>`; return; }
+      el.innerHTML = menu.map(d => `
         <div class="flex items-center justify-between p-2.5 rounded-xl border border-slate-200 bg-slate-50/50">
           <div>
             <div class="text-sm font-semibold text-slate-800">${lang === 'ar' ? d.nameAr : d.nameEn}</div>
@@ -1233,7 +1400,7 @@
       }).join('');
     }
     function addToQrCart(dishId) {
-      const d = getCurrentRest().menu.find(x => x.id === dishId);
+      const d = (getCurrentRest().menu || []).find(x => x.id === dishId);
       if (!d) return;
       const existing = qrCart.find(x => x.id === dishId);
       if (existing) existing.qty++;
@@ -1250,7 +1417,7 @@
     function renderQrModule() {
       const r = getCurrentRest();
       const grid = document.getElementById('qr-menu-grid');
-      const avail = r.menu.filter(d => d.available);
+      const avail = ((r && r.menu) || []).filter(d => d.available);
       grid.innerHTML = avail.length ? avail.map(d => `
         <div class="bg-white rounded-2xl border border-slate-200 p-4 flex items-center justify-between">
           <div>
@@ -1304,11 +1471,12 @@
       let isUpdate = false;
 
       updateCurrentRest(r => {
-        const existing = (r.orders || []).find(o => o.table === table);
+        if (!Array.isArray(r.orders)) r.orders = [];
+        const existing = r.orders.find(o => o.table === table);
         if (existing) {
           isUpdate = true;
           qrCart.forEach(item => {
-            const found = existing.items.find(x => x.id === item.id);
+            const found = (existing.items || []).find(x => x.id === item.id);
             if (found) found.qty += item.qty;
             else existing.items.push({ ...item });
           });
@@ -1324,13 +1492,15 @@
           r.orders.push(newOrder);
           savedOrder = JSON.parse(JSON.stringify(newOrder));
         }
+
+        // Sync directly into shared POS bills
+        if (!r.posBills[table]) r.posBills[table] = [];
+        qrCart.forEach(item => {
+          const ex = r.posBills[table].find(x => x.id === item.id);
+          if (ex) ex.qty += item.qty; else r.posBills[table].push({ ...item });
+        });
       });
 
-      if (!posBills[table]) posBills[table] = [];
-      qrCart.forEach(item => {
-        const ex = posBills[table].find(x => x.id === item.id);
-        if (ex) ex.qty += item.qty; else posBills[table].push({ ...item });
-      });
       qrCart = [];
       document.getElementById('qr-notes').value = '';
       renderAll();
@@ -1338,7 +1508,7 @@
     }
     function renderQrTracker() {
       const table = document.getElementById('qr-table-select').value;
-      const orders = getCurrentRest().orders.filter(o => o.table === table);
+      const orders = (getCurrentRest().orders || []).filter(o => o.table === table);
       const el = document.getElementById('qr-order-tracker');
       if (!orders.length) { el.innerHTML = `<div class="text-slate-400">No active orders for ${table}.</div>`; return; }
       const badge = { new: 'bg-amber-100 text-amber-800', preparing: 'bg-blue-100 text-blue-800', ready: 'bg-emerald-100 text-emerald-800' };
@@ -1353,7 +1523,7 @@
             </div>
           </div>
           <div class="space-y-1">
-            ${o.items.map(i => `
+            ${(o.items || []).map(i => `
               <div class="flex items-center justify-between bg-white px-2 py-1 rounded-lg border border-slate-100">
                 <span class="text-slate-700 truncate">${lang === 'ar' ? i.nameAr : i.nameEn}</span>
                 <div class="flex items-center gap-1.5 shrink-0">
@@ -1368,7 +1538,7 @@
       `).join('');
     }
 
-    // ==================== 3. POS & BILLING ====================
+    // ==================== 3. POS & BILLING (MULTI-DEVICE SYNCED) ====================
     function setPaymentMethod(method) {
       paymentMethod = method;
       document.getElementById('pay-btn-cash').className = method === 'cash'
@@ -1404,42 +1574,48 @@
       renderPosModule();
     }
     function addToPosBill(dishId) {
-      const d = getCurrentRest().menu.find(x => x.id === dishId);
+      const d = (getCurrentRest().menu || []).find(x => x.id === dishId);
       if (!d) return;
-      if (!posBills[activePosTable]) posBills[activePosTable] = [];
-      const ex = posBills[activePosTable].find(x => x.id === dishId);
-      if (ex) ex.qty++; else posBills[activePosTable].push({ id: d.id, nameEn: d.nameEn, nameAr: d.nameAr, price: d.price, qty: 1 });
+      updateCurrentRest(r => {
+        if (!r.posBills[activePosTable]) r.posBills[activePosTable] = [];
+        const ex = r.posBills[activePosTable].find(x => x.id === dishId);
+        if (ex) ex.qty++; else r.posBills[activePosTable].push({ id: d.id, nameEn: d.nameEn, nameAr: d.nameAr, price: d.price, qty: 1 });
+      });
       renderPosModule();
     }
     function updatePosQty(dishId, delta) {
-      const bill = posBills[activePosTable] || [];
-      const idx = bill.findIndex(x => x.id === dishId);
-      if (idx === -1) return;
-      bill[idx].qty += delta;
-      if (bill[idx].qty <= 0) bill.splice(idx, 1);
+      updateCurrentRest(r => {
+        const bill = r.posBills[activePosTable] || [];
+        const idx = bill.findIndex(x => x.id === dishId);
+        if (idx === -1) return;
+        bill[idx].qty += delta;
+        if (bill[idx].qty <= 0) bill.splice(idx, 1);
+      });
       renderPosModule();
     }
     function cancelPosItem(dishId) {
-      const bill = posBills[activePosTable] || [];
-      const idx = bill.findIndex(x => x.id === dishId);
-      if (idx === -1) return;
-      const item = bill[idx];
+      const bill = getTableBill(getCurrentRest(), activePosTable);
+      const item = bill.find(x => x.id === dishId);
+      if (!item) return;
       const reason = prompt(`Cancel item "${item.nameEn}" (${item.qty}x)? Reason (optional):`, 'Customer changed mind');
       if (reason === null) return;
-      bill.splice(idx, 1);
+      updateCurrentRest(r => {
+        r.posBills[activePosTable] = (r.posBills[activePosTable] || []).filter(x => x.id !== dishId);
+      });
       logCancellation('Item', `${item.qty}x ${item.nameEn}`, activePosTable, reason);
       renderAll();
     }
     function cancelPosOrder() {
-      const bill = posBills[activePosTable] || [];
-      const activeKds = (getCurrentRest().orders || []).filter(o => o.table === activePosTable);
+      const r = getCurrentRest();
+      const bill = getTableBill(r, activePosTable);
+      const activeKds = (r.orders || []).filter(o => o.table === activePosTable);
       if (!bill.length && !activeKds.length) return;
       const reason = prompt(`Cancel entire order for ${activePosTable}? Reason (optional):`, 'Customer cancelled');
       if (reason === null) return;
       const summary = bill.length ? bill.map(i => `${i.qty}x ${i.nameEn}`).join(', ') : 'Active KDS Order';
-      posBills[activePosTable] = [];
-      updateCurrentRest(r => {
-        r.orders = (r.orders || []).filter(o => o.table !== activePosTable);
+      updateCurrentRest(rest => {
+        rest.posBills[activePosTable] = [];
+        rest.orders = (rest.orders || []).filter(o => o.table !== activePosTable);
       });
       logCancellation('Order', summary, activePosTable, reason);
       document.getElementById('pos-cash-input').value = '';
@@ -1448,7 +1624,7 @@
       renderAll();
     }
     function sendPosToKitchen() {
-      const items = posBills[activePosTable] || [];
+      const items = getTableBill(getCurrentRest(), activePosTable);
       if (!items.length) return;
       const nowTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -1488,15 +1664,19 @@
         status: 'new',
         time: nowTime
       };
-      updateCurrentRest(r => r.orders.push(newOrder));
+      updateCurrentRest(r => {
+        if (!Array.isArray(r.orders)) r.orders = [];
+        r.orders.push(newOrder);
+      });
       renderAll();
       showKotModal(newOrder, false);
     }
     function renderPosModule() {
       const r = getCurrentRest();
+      if (!r) return;
       document.getElementById('pos-tables-grid').innerHTML = Array.from({ length: 10 }, (_, i) => {
         const t = `Table ${String(i + 1).padStart(2, '0')}`;
-        const hasItems = (posBills[t] && posBills[t].length > 0);
+        const hasItems = getTableBill(r, t).length > 0;
         const inKds = isTableInKitchen(t);
         const isSelected = activePosTable === t;
         return `
@@ -1516,7 +1696,7 @@
         : 'px-3 py-1.5 rounded-lg text-xs font-semibold border border-slate-300 hover:bg-slate-50';
       document.getElementById('pos-takeaway-customer-wrap').classList.toggle('hidden', activePosTable !== 'Takeaway');
 
-      const avail = r.menu.filter(d => d.available);
+      const avail = (r.menu || []).filter(d => d.available);
       document.getElementById('pos-menu-grid').innerHTML = avail.length ? avail.map(d => `
         <button onclick="addToPosBill('${d.id}')" class="p-3 rounded-xl border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 text-left transition">
           <div class="text-xs font-bold text-slate-800 truncate">${lang === 'ar' ? d.nameAr : d.nameEn}</div>
@@ -1527,7 +1707,7 @@
     }
     function renderPosRegister() {
       document.getElementById('pos-active-label').textContent = activePosTable;
-      const items = posBills[activePosTable] || [];
+      const items = getTableBill(getCurrentRest(), activePosTable);
       document.getElementById('pos-bill-items').innerHTML = items.length ? items.map(i => `
         <div class="flex items-center justify-between gap-2">
           <div class="min-w-0">
@@ -1595,7 +1775,7 @@
       document.getElementById('inv-table').textContent = inv.table;
       document.getElementById('inv-payment').textContent = inv.paymentMethod === 'cash' ? 'Cash (Rounded)' : 'Card / Mada';
       document.getElementById('inv-cashier').textContent = inv.cashier || 'Staff';
-      document.getElementById('inv-items-body').innerHTML = inv.items.map(i => `
+      document.getElementById('inv-items-body').innerHTML = (inv.items || []).map(i => `
         <tr>
           <td class="py-1 pr-1 leading-tight">${i.nameEn}</td>
           <td class="py-1 text-center font-bold">${i.qty}</td>
@@ -1623,7 +1803,8 @@
       document.getElementById('invoice-modal').classList.remove('hidden');
     }
     function generateInvoice() {
-      const items = posBills[activePosTable] || [];
+      const r = getCurrentRest();
+      const items = getTableBill(r, activePosTable);
       if (!items.length) return;
 
       let orderLabel = activePosTable;
@@ -1637,10 +1818,9 @@
         orderLabel = `Takeaway - ${custName}`;
       }
 
-      const r = getCurrentRest();
       const { gross, sub, disc, discPct, vat, roundedTotal, roundDiff } = calculateBillTotals(items);
       const invRecord = {
-        invNo: `INV-${String(r.invoiceSeq).padStart(4, '0')}`,
+        invNo: `INV-${String(r.invoiceSeq || 1).padStart(4, '0')}`,
         isoDate: new Date().toISOString(),
         dateStr: new Date().toLocaleString(),
         table: orderLabel,
@@ -1653,10 +1833,10 @@
       updateCurrentRest(rest => {
         if (!Array.isArray(rest.invoices)) rest.invoices = [];
         rest.invoices.unshift(invRecord);
-        rest.invoiceSeq++;
+        rest.invoiceSeq = (rest.invoiceSeq || 1) + 1;
+        rest.posBills[activePosTable] = [];
       });
       showInvoiceModal(getCurrentRest(), invRecord);
-      posBills[activePosTable] = [];
       document.getElementById('pos-cash-input').value = '';
       document.getElementById('pos-discount-pct').value = '0';
       document.getElementById('pos-takeaway-name').value = '';
@@ -1672,38 +1852,33 @@
     // ==================== 4. KITCHEN DISPLAY SYSTEM ====================
     function advanceOrder(orderId, nextStatus) {
       updateCurrentRest(r => {
-        if (nextStatus === 'done') r.orders = r.orders.filter(o => o.id !== orderId);
-        else { const o = r.orders.find(x => x.id === orderId); if (o) o.status = nextStatus; }
+        if (nextStatus === 'done') r.orders = (r.orders || []).filter(o => o.id !== orderId);
+        else { const o = (r.orders || []).find(x => x.id === orderId); if (o) o.status = nextStatus; }
       });
       renderAll();
     }
     function updateOrderItemQty(orderId, itemId, delta) {
-      let targetTable = null;
-      let targetItemCopy = null;
-
       updateCurrentRest(rest => {
         const order = (rest.orders || []).find(o => o.id === orderId);
         if (!order) return;
-        targetTable = order.table;
-        const idx = order.items.findIndex(i => i.id === itemId);
+        const idx = (order.items || []).findIndex(i => i.id === itemId);
         if (idx === -1) return;
-        targetItemCopy = { ...order.items[idx] };
+        const targetItemCopy = { ...order.items[idx] };
         order.items[idx].qty += delta;
         if (order.items[idx].qty <= 0) order.items.splice(idx, 1);
         if (order.items.length === 0) rest.orders = rest.orders.filter(o => o.id !== orderId);
-      });
 
-      const billKey = targetTable && targetTable.startsWith('Takeaway') ? 'Takeaway' : targetTable;
-      if (billKey && targetItemCopy) {
-        if (!posBills[billKey]) posBills[billKey] = [];
-        const pIdx = posBills[billKey].findIndex(i => i.id === itemId);
+        // Sync quantity directly to shared POS bills
+        const billKey = order.table.startsWith('Takeaway') ? 'Takeaway' : order.table;
+        if (!rest.posBills[billKey]) rest.posBills[billKey] = [];
+        const pIdx = rest.posBills[billKey].findIndex(i => i.id === itemId);
         if (pIdx !== -1) {
-          posBills[billKey][pIdx].qty += delta;
-          if (posBills[billKey][pIdx].qty <= 0) posBills[billKey].splice(pIdx, 1);
+          rest.posBills[billKey][pIdx].qty += delta;
+          if (rest.posBills[billKey][pIdx].qty <= 0) rest.posBills[billKey].splice(pIdx, 1);
         } else if (delta > 0) {
-          posBills[billKey].push({ ...targetItemCopy, qty: delta });
+          rest.posBills[billKey].push({ ...targetItemCopy, qty: delta });
         }
-      }
+      });
       renderAll();
     }
     function cancelKdsOrder(orderId) {
@@ -1712,7 +1887,7 @@
       if (!order) return;
       const reason = prompt(`Cancel Order ${order.id} (${order.table})? Reason (optional):`, 'Cancelled in Kitchen');
       if (reason === null) return;
-      const summary = order.items.map(i => `${i.qty}x ${i.nameEn}`).join(', ');
+      const summary = (order.items || []).map(i => `${i.qty}x ${i.nameEn}`).join(', ');
       updateCurrentRest(rest => {
         rest.orders = (rest.orders || []).filter(o => o.id !== orderId);
       });
@@ -1723,23 +1898,24 @@
       const r = getCurrentRest();
       const order = (r.orders || []).find(o => o.id === orderId);
       if (!order) return;
-      const item = order.items.find(i => i.id === itemId);
+      const item = (order.items || []).find(i => i.id === itemId);
       if (!item) return;
       const reason = prompt(`Cancel item "${item.nameEn}" from ${order.id}? Reason (optional):`, 'Out of stock / Customer request');
       if (reason === null) return;
       updateCurrentRest(rest => {
         const o = (rest.orders || []).find(x => x.id === orderId);
         if (!o) return;
-        o.items = o.items.filter(i => i.id !== itemId);
+        o.items = (o.items || []).filter(i => i.id !== itemId);
         if (o.items.length === 0) rest.orders = rest.orders.filter(x => x.id !== orderId);
+        const billKey = order.table.startsWith('Takeaway') ? 'Takeaway' : order.table;
+        if (rest.posBills[billKey]) rest.posBills[billKey] = rest.posBills[billKey].filter(i => i.id !== itemId);
       });
-      const billKey = order.table.startsWith('Takeaway') ? 'Takeaway' : order.table;
-      if (posBills[billKey]) posBills[billKey] = posBills[billKey].filter(i => i.id !== itemId);
       logCancellation('Item', `${order.id}: ${item.qty}x ${item.nameEn}`, order.table, reason);
       renderAll();
     }
     function renderKds() {
-      const orders = getCurrentRest().orders || [];
+      const r = getCurrentRest();
+      const orders = (r && r.orders) || [];
       const cols = { new: [], preparing: [], ready: [] };
       orders.forEach(o => { if (cols[o.status]) cols[o.status].push(o); });
       document.getElementById('kds-count-new').textContent = cols.new.length;
@@ -1755,7 +1931,7 @@
             </div>
           </div>
           <ul class="text-xs text-slate-700 space-y-1.5">
-            ${o.items.map(i => `
+            ${(o.items || []).map(i => `
               <li class="flex items-center justify-between gap-2 bg-white px-2 py-1.5 rounded-lg border border-slate-100">
                 <span class="truncate">${lang === 'ar' ? i.nameAr : i.nameEn}</span>
                 <div class="flex items-center gap-1 shrink-0">
@@ -1881,6 +2057,9 @@
 
     // ==================== INIT ====================
     (function init() {
+      const savedCloudUrl = localStorage.getItem(CLOUD_URL_KEY);
+      if (savedCloudUrl) initCloudSync(savedCloudUrl);
+
       const raw = localStorage.getItem(SESSION_KEY);
       if (raw) {
         try {
